@@ -68,3 +68,11 @@ int main(int argc, const char * argv[]) {
 
     struct parametros *lista_parametros = malloc(sizeof(struct parametros) * num_cintas);
     pthread_t *threads = malloc(sizeof(pthread_t) * num_cintas);
+
+    int  j = 0;
+    for (int i = 0; i < num_cintas; i++) {
+        lista_parametros[i].id = numeros[j++]; printf("%d", numeros[j]);
+        lista_parametros[i].belt_size = numeros[j++]; printf("%d", numeros[j]);
+        lista_parametros[i].num_products = numeros[j++]; printf("%d", numeros[j]);
+    }
+}
