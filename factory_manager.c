@@ -9,13 +9,9 @@
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
+#include "process_manager.h"
 
-struct parametros {
-    int id;
-    int belt_size;
-    int num_products;
-};
-
+/*Struct de parametros movida a procces_manger.h*/
 
 #define MAX_LINE 1024
 
@@ -93,7 +89,7 @@ int main(int argc, const char * argv[]) {
     /*+++++++++++++++++++++++++++++++++Espera de hilos++++++++++++++++++++++++++++++++++++*/
 
     for (int i = 0; i < num_cintas; i++) {
-        int recogido = pthread_join(threads[i], &retval);
+        int recogido = pthread_join(threads[i], NULL);
         if (recogido != 0) {
             fprintf(stderr, "[ERROR][factory_manager] Process_manager with id %d has finished with errors.\n", lista_parametros[i].id);
         } else {
