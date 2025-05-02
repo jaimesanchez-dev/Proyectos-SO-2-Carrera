@@ -75,4 +75,31 @@ int main(int argc, const char * argv[]) {
         lista_parametros[i].belt_size = numeros[j++]; printf("%d", numeros[j]);
         lista_parametros[i].num_products = numeros[j++]; printf("%d", numeros[j]);
     }
+
+    /*+++++++++++++++++++++++++++++++++Creacion de hilos++++++++++++++++++++++++++++++++++++*/
+
+    for (int i = 0; i < num_cintas; i++) {
+        int creado = pthread_create(&threads[i], NULL, process_manager, (void*)&lista_parametros[i]);
+        if (creado != 0) {
+            /*Controla errores sino se crea*/
+            fprintf(stderr, "[ERROR][factory_manager] Process_manager with id %d has finished with errors.\n", lista_parametros[i].id);
+        } else {
+            printf("[OK][factory_manager] Process_manager with id %d has been created.\n", lista_parametros[i].id);
+        }
+    }
+    /*+++++++++++++++++++++++++++++++++Creacion de hilos++++++++++++++++++++++++++++++++++++*/
+
+
+    /*+++++++++++++++++++++++++++++++++Espera de hilos++++++++++++++++++++++++++++++++++++*/
+
+    for (int i = 0; i < num_cintas; i++) {
+        int recogido = pthread_join(threads[i], &retval);
+        if (recogido != 0) {
+            fprintf(stderr, "[ERROR][factory_manager] Process_manager with id %d has finished with errors.\n", lista_parametros[i].id);
+        } else {
+            printf("[OK][factory_manager] Process_manager with id %d has finished.\n", lista_parametros[i].id);
+        }
+    }
+
+    /*+++++++++++++++++++++++++++++++++Espera de hilos++++++++++++++++++++++++++++++++++++*/
 }
