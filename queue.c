@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include "queue.h"
 
-char *cola;
+struct element* cola = NULL;
 
 int tamano = 0; /*Tamano de la cola*/
 int principio = 0; /*Posicion del primer elemento*/	

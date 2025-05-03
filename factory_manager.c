@@ -10,10 +10,12 @@
 #include <pthread.h>
 #include <errno.h>
 #include "process_manager.h"
+#include <semaphore.h>
 
 /*Struct de parametros movida a procces_manger.h*/
 
 #define MAX_LINE 1024
+extern sem_t Jamess;
 
 int main(int argc, const char * argv[]) {
     if (argc != 2) {
@@ -69,10 +71,12 @@ int main(int argc, const char * argv[]) {
     for (int i = 0; i < num_cintas; i++) {
         lista_parametros[i].id = numeros[j++]; printf("%d", numeros[j]);
         lista_parametros[i].belt_size = numeros[j++]; printf("%d", numeros[j]);
-        lista_parametros[i].num_products = numeros[j++]; printf("%d", numeros[j]);
+        lista_parametros[i].num_products = numeros[j++]; printf("%d\n", numeros[j]);
     }
 
     /*+++++++++++++++++++++++++++++++++Creacion de hilos++++++++++++++++++++++++++++++++++++*/
+
+    sem_init(&Jamess, 0, 1); /*Inicializa el semaforo*/
 
     for (int i = 0; i < num_cintas; i++) {
         int creado = pthread_create(&threads[i], NULL, process_manager, (void*)&lista_parametros[i]);
@@ -96,6 +100,12 @@ int main(int argc, const char * argv[]) {
             printf("[OK][factory_manager] Process_manager with id %d has finished.\n", lista_parametros[i].id);
         }
     }
+
+    sem_destroy(&Jamess); /*Destruye el semaforo*/
+    free(lista_parametros);
+    free(threads);
+    printf("[OK][factory_manager] Factory manager has finished.\n");
+    return 0;
 
     /*+++++++++++++++++++++++++++++++++Espera de hilos++++++++++++++++++++++++++++++++++++*/
 }

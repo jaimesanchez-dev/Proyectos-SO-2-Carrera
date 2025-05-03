@@ -14,6 +14,7 @@
 #include <semaphore.h>
 
 #define NUM_THREADS 2
+sem_t Jamess; /*Semaforo exteno, declarado en factory*/
 
 
 //Thread function
@@ -28,6 +29,7 @@ void *PrintHello(void *threadid)
 
 /*process_manager (int id, int belt_size, int items_to_produce )*/
 int *process_manager(void *arg) {
+	sem_wait(&Jamess);
 	pthread_t threads[NUM_THREADS];
    	int rc;
    	long t;
@@ -56,7 +58,7 @@ int *process_manager(void *arg) {
 		pthread_join(threads[i], NULL);
 	}
 	printf("Fin process manager\n");
-
+	sem_post(&Jamess);
    	/* Last thing that main() should do */
    	return(0);
 	
