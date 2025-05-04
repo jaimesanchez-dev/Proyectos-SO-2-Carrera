@@ -67,17 +67,18 @@ int main(int argc, const char * argv[]) {
     struct parametros *lista_parametros = malloc(sizeof(struct parametros) * num_cintas);
     pthread_t *threads = malloc(sizeof(pthread_t) * num_cintas);
 
-    int  j = 0;
+    int  j = 1;
     for (int i = 0; i < num_cintas; i++) {
-        lista_parametros[i].id = numeros[j++]; printf("%d", numeros[j]);
-        lista_parametros[i].belt_size = numeros[j++]; printf("%d", numeros[j]);
-        lista_parametros[i].num_products = numeros[j++]; printf("%d\n", numeros[j]);
+        lista_parametros[i].id = numeros[j]; j++;
+        lista_parametros[i].belt_size = numeros[j]; j++;
+        lista_parametros[i].num_products = numeros[j]; j++;
     }
 
     /*+++++++++++++++++++++++++++++++++Creacion de hilos++++++++++++++++++++++++++++++++++++*/
 
     sem_init(&Jamess, 0, 1); /*Inicializa el semaforo*/
 
+    sem_wait(&Jamess);
     for (int i = 0; i < num_cintas; i++) {
         int creado = pthread_create(&threads[i], NULL, process_manager, (void*)&lista_parametros[i]);
         if (creado != 0) {
@@ -87,6 +88,8 @@ int main(int argc, const char * argv[]) {
             printf("[OK][factory_manager] Process_manager with id %d has been created.\n", lista_parametros[i].id);
         }
     }
+    sem_post(&Jamess);
+
     /*+++++++++++++++++++++++++++++++++Creacion de hilos++++++++++++++++++++++++++++++++++++*/
 
 

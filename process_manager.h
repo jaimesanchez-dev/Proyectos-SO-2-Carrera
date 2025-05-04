@@ -1,5 +1,5 @@
-#ifndef HEADER_FILE
-#define HEADER_FILE
+#ifndef PROCESS_MANAGER_H
+#define PROCESS_MANAGER_H
 
 struct parametros {
     int id;
