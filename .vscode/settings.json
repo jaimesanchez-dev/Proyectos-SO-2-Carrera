@@ -3,6 +3,8 @@
         "stdio.h": "c",
         "fcntl.h": "c",
         "unistd.h": "c",
-        "random": "c"
+        "random": "c",
+        "pthread.h": "c",
+        "variant": "c"
     }
 }
