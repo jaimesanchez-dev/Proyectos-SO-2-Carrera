@@ -1,2 +1,3 @@
-NIA,Apellidos,Nombre <- Reemplazame (eliminame)
-NIA,Surname,First name <-Replace Me (delete me)
+100522207,Sanchez Sanchez,Jaime
+100522196,Dulugeac,Cristian
+100522368,Diaz Jimenez,Paula
