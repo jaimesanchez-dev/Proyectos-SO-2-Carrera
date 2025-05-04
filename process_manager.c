@@ -12,148 +12,150 @@
 
 
 
-
-
-
-
 pthread_mutex_t mutex;
 
 pthread_cond_t not_full, not_empty;
 
+
+
 int produced_count = 0;
+
 int consumed_count = 0;
 
 
 
- void *producer(void *arg) {
+void *producer(void *arg) {
 
-	 struct parametros *params = (struct parametros *)arg;
+    struct parametros *params = (struct parametros *)arg;
 
-	 int produced = 0;
+    int produced = 0;
 
- 
+    
 
-	 while (produced < params->num_products) {
 
-		 pthread_mutex_lock(&mutex);
+    
 
- 
+    while (produced < params->num_products) {
 
-		 while (produced_count != 0) { // espera a que se haya consumido el lote anterior
+        pthread_mutex_lock(&mutex);
 
-			 pthread_cond_wait(&not_full, &mutex);
+        
 
-		 }
+        while (produced_count != 0) { // espera a que se haya consumido el lote anterior
 
- 
+            pthread_cond_wait(&not_full, &mutex);
 
-		 int lote = 0;
+        }
 
-		 while (lote < params->belt_size && produced < params->num_products) {
+        
 
-			 struct element product;
+        int lote = 0;
 
-			 product.num_edition = produced;
+        
 
-			 product.id_belt = params->id;
+        while (lote < params->belt_size && produced < params->num_products) {
 
-			 product.last = (produced == params->num_products - 1) ? 1 : 0;
+            struct element product;
 
- 
+            product.num_edition = produced;
 
-			 queue_put(&product);
+            product.id_belt = params->id;
 
-			 printf("[OK][queue] Introduced element with id %d in belt %d.\n", product.num_edition, params->id);
+            product.last = (produced == params->num_products - 1) ? 1 : 0;
 
+            
 
+            queue_put(&product);
 
- 
+            
 
-			 lote++;
+            printf("[OK][queue] Introduced element with id %d in belt %d.\n", product.num_edition, params->id);
 
-			 produced++;
+            
 
-			 produced_count++;
+            lote++;
 
-		 }
+            produced++;
 
- 
+            produced_count++;
 
-		 pthread_cond_signal(&not_empty); // avisa al consumidor que puede empezar
+        }
 
-		 pthread_mutex_unlock(&mutex);
+        
 
-	 }
+        pthread_cond_signal(&not_empty); // avisa al consumidor que puede empezar
 
- 
+        pthread_mutex_unlock(&mutex);
 
-	 pthread_exit(NULL);
+    }
 
- }
+    
 
- 
+    pthread_exit(NULL);
 
- void *consumer(void *arg) {
+}
 
-	 struct parametros *params = (struct parametros *)arg;
 
-	 int done = 0;
 
- 
+void *consumer(void *arg) {
 
-	 while (!done) {
+    struct parametros *params = (struct parametros *)arg;
 
-		 pthread_mutex_lock(&mutex);
+    int done = 0;
 
- 
+    
 
-		 while (produced_count == 0) { // espera hasta que haya productos
+    while (!done) {
 
-			 pthread_cond_wait(&not_empty, &mutex);
+        pthread_mutex_lock(&mutex);
 
-		 }
+        
 
- 
+        while (produced_count == 0) { // espera hasta que haya productos
 
-		 while (produced_count > 0) {
+            pthread_cond_wait(&not_empty, &mutex);
 
-			 struct element *product = queue_get();
+        }
 
-			 printf("[OK][queue] Obtained element with id %d in belt %d.\n", product->num_edition, params->id);
+        
 
+        while (produced_count > 0) {
 
+            struct element *product = queue_get();
 
- 
+            printf("[OK][queue] Obtained element with id %d in belt %d.\n", product->num_edition, params->id);
 
-			 if (product->last) {
+            
 
-				 done = 1;
+            if (product->last) {
 
-			 }
+                done = 1;
 
- 
+            }
 
-			 produced_count--;
+            
 
-			 consumed_count++;
+            produced_count--;
 
-		 }
+            consumed_count++;
 
- 
+        }
 
-		 consumed_count = 0;
+        
 
-		 pthread_cond_signal(&not_full); // avisa al productor que puede hacer otro lote
+        consumed_count = 0;
 
-		 pthread_mutex_unlock(&mutex);
+        pthread_cond_signal(&not_full); // avisa al productor que puede hacer otro lote
 
-	 }
+        pthread_mutex_unlock(&mutex);
 
- 
+    }
 
-	 pthread_exit(NULL);
+    
 
- } 
+    pthread_exit(NULL);
+
+}
 
 
 
@@ -161,21 +163,35 @@ void *process_manager(void *arg) {
 
     struct parametros *p = arg;
 
+    
 
-
-    // 1) Wait until factory gives the “start” for this exact index
+    // 1) Esperar la señal inicial del factory_manager
 
     sem_wait(&p->start_sem[p->index]);
 
+    
 
-
-    // 2) Now we’re free to print “waiting” and build the belt
+    // 2) Imprimir el mensaje de espera e inicializar estructuras
 
     printf("[OK][process_manager] Process_manager with id %d waiting to produce %d elements.\n",
 
            p->id, p->num_products);
 
+    
 
+    // 3) Notificar al factory_manager que estamos listos
+
+    sem_post(&p->ready_sem[p->index]);
+
+    
+
+    // 4) Esperar la señal para comenzar la producción
+
+    sem_wait(&p->start_sem[p->index]);
+
+    
+
+    // 5) Inicializar mutex, condvars y belt
 
     pthread_mutex_init(&mutex, NULL);
 
@@ -183,7 +199,7 @@ void *process_manager(void *arg) {
 
     pthread_cond_init(&not_empty, NULL);
 
-
+    
 
     if (queue_init(p->belt_size) != 0) {
 
@@ -195,13 +211,15 @@ void *process_manager(void *arg) {
 
     }
 
+    
+
     printf("[OK][process_manager] Belt with id %d has been created with a maximum of %d elements.\n",
 
            p->id, p->belt_size);
 
+    
 
-
-    // 3) Spawn producer & consumer threads
+    // 6) Crear hilos productor y consumidor
 
     pthread_t prod, cons;
 
@@ -209,35 +227,35 @@ void *process_manager(void *arg) {
 
     pthread_create(&cons, NULL, consumer, p);
 
+    
 
-
-    // 4) Wait for them to finish
+    // 7) Esperar a que terminen
 
     pthread_join(prod, NULL);
 
     pthread_join(cons, NULL);
 
-
+    
 
     queue_destroy();
 
+    
 
-
-    // 5) Print the “produced” message
+    // 8) Imprimir mensaje de finalización
 
     printf("[OK][process_manager] Process_manager with id %d has produced %d elements.\n",
 
            p->id, p->num_products);
 
+    
 
-
-    // 6) Tell the factory “I’m done”
+    // 9) Notificar al factory_manager que ha terminado
 
     sem_post(&p->done_sem[p->index]);
 
+    
 
-
-    // 7) Cleanup
+    // 10) Limpiar recursos
 
     pthread_mutex_destroy(&mutex);
 
@@ -245,7 +263,8 @@ void *process_manager(void *arg) {
 
     pthread_cond_destroy(&not_empty);
 
+    
+
     pthread_exit(NULL);
 
 }
-
