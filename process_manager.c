@@ -1,144 +1,251 @@
-/*
- *
- * process_manager.c
- *
- */
+#include <stdio.h>
 
- #include <stdio.h>
- #include <stdlib.h>
- #include <unistd.h>
- #include <fcntl.h>
- #include <stddef.h>
- #include <pthread.h>
- #include "queue.h"
- #include <semaphore.h>
- 
- 
- struct parametros {
-	 int id;
-	 int belt_size;
-	 int num_products;
- };
- 
- #define NUM_THREADS 2
- sem_t Jamess; /*Semaforo exteno, declarado en factory*/
- 
- pthread_mutex_t mutex;
- pthread_cond_t not_full, not_empty;
- 
- int total_products; // Número total de productos a generar
- 
+#include <stdlib.h>
+
+#include <pthread.h>
+
+#include <semaphore.h>
+
+#include "process_manager.h"
+
+#include "queue.h"
+
+
+
+
+
+
+
+pthread_mutex_t mutex;
+
+pthread_cond_t not_full, not_empty;
+
+int produced_count = 0;
+int consumed_count = 0;
+
+
+
  void *producer(void *arg) {
+
 	 struct parametros *params = (struct parametros *)arg;
+
+	 int produced = 0;
+
  
-	 for (int i = 0; i < params->num_products; i++) {
-		 struct element product;
-		 product.num_edition = i;
-		 product.id_belt = params->id;
-		 if (i == params->num_products - 1) {
-			 product.last = 1;
-		 } else {
-			 product.last = 0;
-		 }
- 
+
+	 while (produced < params->num_products) {
+
 		 pthread_mutex_lock(&mutex);
-		 while (queue_full()) {
+
+ 
+
+		 while (produced_count != 0) { // espera a que se haya consumido el lote anterior
+
 			 pthread_cond_wait(&not_full, &mutex);
+
 		 }
+
  
-		 queue_put(&product);
-		 if (product.last) {
-			 printf("[Producer][Belt %d] Produced edition %d (last)\n", params->id, product.num_edition);
-		 } else {
-			 printf("[Producer][Belt %d] Produced edition %d\n", params->id, product.num_edition);
+
+		 int lote = 0;
+
+		 while (lote < params->belt_size && produced < params->num_products) {
+
+			 struct element product;
+
+			 product.num_edition = produced;
+
+			 product.id_belt = params->id;
+
+			 product.last = (produced == params->num_products - 1) ? 1 : 0;
+
+ 
+
+			 queue_put(&product);
+
+			 printf("[OK][queue] Introduced element with id %d in belt %d.\n", product.num_edition, params->id);
+
+
+
+ 
+
+			 lote++;
+
+			 produced++;
+
+			 produced_count++;
+
 		 }
+
  
-		 pthread_cond_signal(&not_empty);
+
+		 pthread_cond_signal(&not_empty); // avisa al consumidor que puede empezar
+
 		 pthread_mutex_unlock(&mutex);
- 
-		 usleep(100000); // Simula tiempo de producción
+
 	 }
+
  
+
 	 pthread_exit(NULL);
+
  }
+
  
+
  void *consumer(void *arg) {
+
 	 struct parametros *params = (struct parametros *)arg;
+
 	 int done = 0;
+
  
+
 	 while (!done) {
+
 		 pthread_mutex_lock(&mutex);
-		 while (queue_empty()) {
+
+ 
+
+		 while (produced_count == 0) { // espera hasta que haya productos
+
 			 pthread_cond_wait(&not_empty, &mutex);
+
 		 }
+
  
-		 struct element *product = queue_get();
-		 if (product->last) {
-			 printf("[Consumer][Belt %d] Consumed edition %d (last)\n", params->id, product->num_edition);
-		 } else {
-			 printf("[Consumer][Belt %d] Consumed edition %d\n", params->id, product->num_edition);
+
+		 while (produced_count > 0) {
+
+			 struct element *product = queue_get();
+
+			 printf("[OK][queue] Obtained element with id %d in belt %d.\n", product->num_edition, params->id);
+
+
+
+ 
+
+			 if (product->last) {
+
+				 done = 1;
+
+			 }
+
+ 
+
+			 produced_count--;
+
+			 consumed_count++;
+
 		 }
+
  
-		 if (product->last) {
-			 done = 1;
-		 }
- 
-		 pthread_cond_signal(&not_full);
+
+		 consumed_count = 0;
+
+		 pthread_cond_signal(&not_full); // avisa al productor que puede hacer otro lote
+
 		 pthread_mutex_unlock(&mutex);
- 
-		 usleep(150000); // Simula tiempo de consumo
+
 	 }
+
  
+
 	 pthread_exit(NULL);
- }
- 
- void *process_manager(void *arg) {
-	struct parametros *params = (struct parametros *)arg;
 
-	sem_wait(&Jamess); // Sección crítica para evitar colisiones de impresión
+ } 
 
-	printf("[OK][process_manager] Process_manager with id %d waiting to produce %d elements.\n",params->id, params->num_products);
 
-	sem_post(&Jamess); // Sección crítica para evitar colisiones de impresión
 
-	 sem_wait(&Jamess); // Sección crítica para evitar colisiones de impresión
- 
-	 pthread_mutex_init(&mutex, NULL);
-	 pthread_cond_init(&not_full, NULL);
-	 pthread_cond_init(&not_empty, NULL);
- 
-	 
-	 total_products = params->num_products;
- 
-	 printf("[ProcessManager %d] Starting with belt size %d and %d products\n",
-			params->id, params->belt_size, params->num_products);
+void *process_manager(void *arg) {
 
- 
-	 if (queue_init(params->belt_size) != 0) {
-		 fprintf(stderr, "[ProcessManager %d] Error initializing queue\n", params->id);
-		 sem_post(&Jamess);
-		 pthread_exit(NULL);
-	 }
-	 printf("[OK][process_manager] Belt with id %d has been created with a maximum of %d elements.\n",params->id, params->belt_size);
- 
-	 pthread_t prod, cons;
-	 pthread_create(&prod, NULL, producer, params);
-	 pthread_create(&cons, NULL, consumer, params);
- 
-	 pthread_join(prod, NULL);
-	 pthread_join(cons, NULL);
- 
-	 queue_destroy();
+    struct parametros *p = arg;
 
-	 printf("[OK][process_manager] Process_manager with id %d has produced %d elements.\n", params->id, total_products);
-	 printf("[OK][factory_manager] Process_manager with id %d has finished.\n", params->id);
- 
-	 sem_post(&Jamess);
- 
-	 pthread_mutex_destroy(&mutex);
-	 pthread_cond_destroy(&not_full);
-	 pthread_cond_destroy(&not_empty);
- 
-	 pthread_exit(NULL);
- }
- 
+
+
+    // 1) Wait until factory gives the “start” for this exact index
+
+    sem_wait(&p->start_sem[p->index]);
+
+
+
+    // 2) Now we’re free to print “waiting” and build the belt
+
+    printf("[OK][process_manager] Process_manager with id %d waiting to produce %d elements.\n",
+
+           p->id, p->num_products);
+
+
+
+    pthread_mutex_init(&mutex, NULL);
+
+    pthread_cond_init(&not_full, NULL);
+
+    pthread_cond_init(&not_empty, NULL);
+
+
+
+    if (queue_init(p->belt_size) != 0) {
+
+        fprintf(stderr, "[ERROR][process_manager] There was an error executing process_manager with id %d.\n", p->id);
+
+        sem_post(&p->done_sem[p->index]);
+
+        pthread_exit(NULL);
+
+    }
+
+    printf("[OK][process_manager] Belt with id %d has been created with a maximum of %d elements.\n",
+
+           p->id, p->belt_size);
+
+
+
+    // 3) Spawn producer & consumer threads
+
+    pthread_t prod, cons;
+
+    pthread_create(&prod, NULL, producer, p);
+
+    pthread_create(&cons, NULL, consumer, p);
+
+
+
+    // 4) Wait for them to finish
+
+    pthread_join(prod, NULL);
+
+    pthread_join(cons, NULL);
+
+
+
+    queue_destroy();
+
+
+
+    // 5) Print the “produced” message
+
+    printf("[OK][process_manager] Process_manager with id %d has produced %d elements.\n",
+
+           p->id, p->num_products);
+
+
+
+    // 6) Tell the factory “I’m done”
+
+    sem_post(&p->done_sem[p->index]);
+
+
+
+    // 7) Cleanup
+
+    pthread_mutex_destroy(&mutex);
+
+    pthread_cond_destroy(&not_full);
+
+    pthread_cond_destroy(&not_empty);
+
+    pthread_exit(NULL);
+
+}
+
