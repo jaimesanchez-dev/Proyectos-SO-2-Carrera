@@ -112,12 +112,14 @@
  
 	 printf("[ProcessManager %d] Starting with belt size %d and %d products\n",
 			params->id, params->belt_size, params->num_products);
+
  
 	 if (queue_init(params->belt_size) != 0) {
 		 fprintf(stderr, "[ProcessManager %d] Error initializing queue\n", params->id);
 		 sem_post(&Jamess);
 		 pthread_exit(NULL);
 	 }
+	 printf("[OK][process_manager] Belt with id %d has been created with a maximum of %d elements.\n",params->id, params->belt_size);
  
 	 pthread_t prod, cons;
 	 pthread_create(&prod, NULL, producer, params);
@@ -127,6 +129,8 @@
 	 pthread_join(cons, NULL);
  
 	 queue_destroy();
+
+	 printf("[OK][process_manager] Process_manager with id %d has produced %d elements.\n", params->id, total_products);
 	 printf("[OK][factory_manager] Process_manager with id %d has finished.\n", params->id);
  
 	 sem_post(&Jamess);
