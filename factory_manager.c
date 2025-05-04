@@ -119,7 +119,7 @@
          pthread_join(threads[i], NULL);
      }
  
-     printf("[OK][factory_manager] Factory manager has finished.\n");
+     printf("[OK][factory_manager] Finishing.\n");
  
      /*Limpiar memoria*/ 
      for (int i = 0; i < num_cintas; i++) {

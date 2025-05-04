@@ -15,10 +15,6 @@ void *producer(void *arg) {
     struct parametros *params = (struct parametros *)arg;
     int produced = 0;
     
-    /* Imprimir lo que va a producir*/
-    printf("[OK][producer] Producer with id %d will produce %d elements.\n", 
-           params->id, params->num_products);
-    
     while (produced < params->num_products) {
         pthread_mutex_lock(&mutex);
         
