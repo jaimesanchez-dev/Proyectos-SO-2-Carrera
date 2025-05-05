@@ -85,25 +85,20 @@
      }
  
      /*+++++++++++++++++Crear los hilos+++++++++++++++++++*/
-
      for (int i = 0; i < num_cintas; i++) {
-         if (pthread_create(&threads[i], NULL,process_manager, &lista_parametros[i]) != 0) {
+         if (pthread_create(&threads[i], NULL, process_manager, &lista_parametros[i]) != 0) {
              fprintf(stderr,"[ERROR][factory_manager] Process_manager with id %d has finished with errors.\n", lista_parametros[i].id);
          }
          else {
-             printf("[OK][factory_manager] Process_manager with id %d has been created.\n",lista_parametros[i].id);
+             printf("[OK][factory_manager] Process_manager with id %d has been created.\n", lista_parametros[i].id);
          }
      }
-
      /*+++++++++++++++++Crear los hilos+++++++++++++++++++*/
      
-     /*Iniciar todos los process_manager y esperar a que estén listos*/
+     /*Iniciar todos los process_manager EN ORDEN y esperar a que estén listos*/
      for (int i = 0; i < num_cintas; i++) {
-         sem_post(&start_sem[i]); // Permitir que el process_manager i comience
-     }
-     
-     for (int i = 0; i < num_cintas; i++) {
-         sem_wait(&ready_sem[i]);
+         sem_post(&start_sem[i]); 
+         sem_wait(&ready_sem[i]); 
      }
      
      /*los process_manager inician la producción y esperamos a que terminen*/
